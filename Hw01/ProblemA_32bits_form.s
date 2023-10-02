@@ -5,7 +5,7 @@ test0: .word 0x064
 mask0: .word 0x55555555
 mask1: .word 0x33333333
 mask2: .word 0x0f0f0f0f
-mask: .word 0x3f
+mask:  .word 0x3f
     
 #string
 str: .string "\n"
