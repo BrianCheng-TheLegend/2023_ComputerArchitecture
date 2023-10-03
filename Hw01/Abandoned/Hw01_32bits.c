@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdio.h>
 uint16_t count_leading_zeros(uint32_t x)
 {
     x |= (x >> 1);
@@ -17,7 +18,7 @@ uint16_t count_leading_zeros(uint32_t x)
     return (32 - (x & 0x3f));
 }
 
-void sort(int *a,int *b){
+void change(int *a,int *b){
     int c;
     c=*a;
     *a=*b;
@@ -25,19 +26,22 @@ void sort(int *a,int *b){
 }
 
 int main(){
-    int a[10]={1000,900,800,700,600,500,400,300,200,100};
-    
-    for(int i=0;i<10;i++){
-        //printf("%d\n",count_leading_zeros(a[i]));
-        for(int j=0;j<10;j++){
-            if(count_leading_zeros(a[i])<count_leading_zeros(a[j])){
-                sort(a[i],a[j]);
+    int len=13;
+    int a[13]={1000,900,800,700,2,3,5,600,500,400,300,200,100};
+    int times=0;
+    for(int i=0;i<len;i++){
+        for(int j=i;j<len;j++){
+            if(a[i]>a[j]){
+                change(&(a[i]),&(a[j]));
+                times++;
             }
         }
     }
-    for(int i=0;i<10;i++){
+
+    for(int i=0;i<len;i++){
         printf("%d\n",a[i]);
     }
+    printf("change %d times\n",times);
 
     return 0;
 }
