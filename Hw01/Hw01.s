@@ -23,19 +23,19 @@ main:
     jal ra,f32_b16_p1
     add a4,a6,x0
     
-    jal ra,encoder
+    jal ra,encoder        # jump to encoder funtion
     add s9,a0,x0          # save a0(data after encode) to s9
-    jal ra,decoder
+    jal ra,decoder        # jump to decoder function
     #
-    li a7,2
-    add a0,x0,s5
-    ecall
+    li a7,2               # set a7 as float mode 
+    add a0,x0,s5          # set a0 as s5 
+    ecall                 # call
     
-    jal ra,cl
+    jal ra,cl             # change line
     
-    li a7,2
-    add a0,x0,s6
-    ecall
+    i a7,2                # set a7 as float mode  
+    add a0,x0,s6          # set a0 as s6
+    ecall                 # call
     
     j exit
 
@@ -108,22 +108,22 @@ encoder:
     
 decoder:
     add t0,s9,x0          # load s9(data encode) to t0
-    la a1,mask2
-    lw s2,0(a1)
-    and t1,t0,s2
-    lw s2,4(a1)
-    and t2,t0,s2
-    slli t2,t2,16
-    add s6,t1,x0
-    add s5,t2,x0
-    ret
+    la a1,mask2           # load mask2 address
+    lw s2,0(a1)           # load mask 0xFFFF0000
+    and t1,t0,s2          # use mask to specification bfloat 1
+    lw s2,4(a1)           # load mask 0x0000FFFF
+    and t2,t0,s2          # use mask to specification bfloat 2
+    slli t2,t2,16         # shift to left to let bfloat peform like original float
+    add s6,t1,x0          # store t1(bfloat 1) to s6
+    add s5,t2,x0          # store t2(bfloat 2) to s5
+    ret                   # return to main
     
 # change line
 cl:
-    li a7,4
-    la a0,str
-    ecall
-    ret
+    li a7,4               # set a7 as string mode 
+    la a0,str             # load str to a0
+    ecall                 # call 
+    ret                   # return to main
 
 exit:
     li a7,10
