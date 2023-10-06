@@ -3,9 +3,11 @@
 test0: .word 0x4141f9a7,0x423645a2 
 
 # mask
-mask0: .word 0x7F800000,0x007FFFFF,0x800000,0x8000,0x7f
 # mask0  for exponent  ,fraction
+mask0: .word 0x7F800000,0x007FFFFF,0x800000,0x8000,0x7f
+# mask1 for round
 mask1: .word 0x8000
+# mask2 for decoder
 mask2: .word 0xFFFF0000,0x0000FFFF
 
 #string
