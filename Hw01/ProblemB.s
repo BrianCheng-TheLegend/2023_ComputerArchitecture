@@ -9,7 +9,7 @@ mask1: .word 0x8000
 mask2: .word 0xFFFF0000,0x0000FFFF
 
 #string
-str: .string "\n"
+# str: .string "\n"
 
 .text
 main:
@@ -17,29 +17,11 @@ main:
     la a2,test0           # load test data address to a2
     lw a6,0(a2)           # load test data to a6
     jal ra,f32_b16_p1     # call fp32 to bf16 function 
-    add a5,a6,x0          # store first bfloat in a5
-    
-    lw a6,4(a2)           # load test data to a6
-    jal ra,f32_b16_p1
-    add a4,a6,x0
-    
-    jal ra,encoder
-    add s9,a0,x0          # save a0(data after encode) to s9
-    jal ra,decoder
-    #
-    li a7,2
-    add a0,x0,s5
+    add a0,x0,a6          # save number to a0 wait for 
     ecall
-    
-    jal ra,cl
-    
-    li a7,2
-    add a0,x0,s6
-    ecall
-    
     j exit
 
-### function converts IEEE754 fp32 to bfloat16
+# function converts IEEE754 fp32 to bfloat16
 f32_b16_p1:
     sw a6,0(sp)
     add t0,a6,x0          # a6 will be only for this funtion to access
@@ -95,36 +77,8 @@ inf_or_zero:
     srli a6,a6,16        
     slli a6,a6,16
     ret                   # move back to main function
-### end of funtion  
+# end of funtion  
     
-# encode two bfloat to one register
-encoder:
-    add t0,a5,x0          # load a5(first bfloat) to t0
-    add t1,a4,x0          # load a4(second bfloat) to t1
-    srli t1,t1,16         # shift to let second bfloat fit in one register
-    or t0,t0,t1           # combine two bfloat in one register
-    add a0,t0,x0          # load t0 to a0
-    ret                   # return to main
-    
-decoder:
-    add t0,s9,x0          # load s9(data encode) to t0
-    la a1,mask2
-    lw s2,0(a1)
-    and t1,t0,s2
-    lw s2,4(a1)
-    and t2,t0,s2
-    slli t2,t2,16
-    add s6,t1,x0
-    add s5,t2,x0
-    ret
-    
-# change line
-cl:
-    li a7,4
-    la a0,str
-    ecall
-    ret
-
 exit:
     li a7,10
     ecall
