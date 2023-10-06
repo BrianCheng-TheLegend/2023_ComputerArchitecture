@@ -38,6 +38,14 @@ void decoder(int c ,int *n1,int *n2){
     *n2=(c&0x0000ffff)<<16;
 }
 
+void bfloat_multiplication(int *num){
+    printf("0x%x\n",*num);
+    int mask[]={0x1,0xff,0x7f};
+    for(int i=0;i<mask.size();i++){
+        
+    }
+}
+
 
 int main(){
     // definition of num1 and transfer it to bfloat
@@ -58,12 +66,14 @@ int main(){
     // printf("%f\n",num2);
     // add two number together and print the binary form
     add=encoder(np1,np2);
-    // printf("0x%x\n",add);
+
+    bfloat_multiplication(&add);
+    printf("0x%x\n",add);
     // // check if num1 and num2 are 0
     // printf("0x%x\n",*np1);
     // printf("0x%x\n",*np2);
     // decode these two nuber to np1 and np2
-    decoder(add,np1,np2);
+    // decoder(add,np1,np2);
     // // check if num1 and num2 are expect number
     // printf("0x%x\n",*np1);
     // printf("%f\n",num1);
