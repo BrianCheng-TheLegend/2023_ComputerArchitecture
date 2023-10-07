@@ -4,7 +4,7 @@ test0: .word 0x4141f9a7,0x423645a2
 
 # mask
 # mask0  for exponent  ,fraction
-#          ( 0         ,4         ,8       ,12    ,16  ,20        ,24)
+#          ( 0         ,4         ,8       ,12    ,16  ,20        ,24        )
 mask0: .word 0x7F800000,0x007FFFFF,0x800000,0x8000,0x7f,0x3F800000,0x80000000
 # mask1 for round
 mask1: .word 0x8000
@@ -38,8 +38,14 @@ main:
     
     jal ra,cl             # change line
     
-    li a7,2                # set a7 as float mode  
+    li a7,2               # set a7 as float mode  
     add a0,x0,s6          # set a0 as s6
+    ecall                 # call
+    
+    jal ra,cl             # change line
+    
+    li a7,2               
+    add a0,x0,s3       
     ecall                 # call
     
     j exit
@@ -160,10 +166,12 @@ Multi_bfloat:
     or t0,t3,t0
 
     # get fraction to t2 and t3
-    lw t6,4(a3)           # load mask0 mask 0x007FFFFF
-    and t2,t0,t6          # use mask 0x007FFFFF get fraction
-    and t3,t1,t6          # use mask 0x007FFFFF get fraction
-    slli t2,t2,8          # shift left let no leading 0
+    lw t6,16(a3)          # load mask0 mask 0x7F
+    slli t6,t6,16         # shift mask to 0x7F0000
+    and t2,t0,t6          # use mask 0x7F0000 get fraction
+    and t3,t1,t6          # use mask 0x7F0000 get fraction
+    slli t2,t2,9          # shift left let no leading 0
+    srli t2,t2,1          # shift right let leading has one 0
     lw t6,24(a3)          # load mask0 mask 0x80000000
     or t2,t2,t6           # use mask 0x80000000 to add integer
     srli t2,t2,1          # shift right to add space for overflow
@@ -176,22 +184,46 @@ Multi_bfloat:
     addi s10,x0,8         # set a end condition
     add t1,x0,x0          # reset t1 to 0 and let this register be result
     lw t6,24(a3)          # load mask0 mask 0x80000000
+
 loop:
     addi s11,s11,1        # add 1 at counter every loop
     srli t6,t6,1          # shift right at 1 every loop
     
     and t4,t2,t6          # use mask to specified number at that place
     beq t4,x0,not_add     # jump if t4 equal to 0
-    add t1,t1,t3          # 
+    add t1,t1,t3          
 not_add:
     srli t3,t3,1
     bne s11,s10,loop
+# end of loop 
+############
+li a7,1
+add a0,t3,x0
+ecall
+############   
+    # check if overflow
+    lw t6,24(a3)
+    and t4,t1,t6
+    beq t4,x0,not_overflow
     
+    # if overflow
+    slli t1,t1,1
+    srli t1,t1,25
+    slli t1,t1,16
+    lw t6,8(a3)
+    add t0,t0,t6
+    j Mult_end
     
-    
+    # if not overflow
+not_overflow:
+    slli t1,t1,2
+    srli t1,t1,25
+    slli t1,t1,16
+
+Mult_end:
+    or t0,t0,t1
+    add s3,t0,x0
     ret
-    
-    
     
 exit:
     li a7,10
