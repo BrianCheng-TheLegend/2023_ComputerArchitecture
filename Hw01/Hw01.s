@@ -4,7 +4,8 @@ test0: .word 0x4141f9a7,0x423645a2
 
 # mask
 # mask0  for exponent  ,fraction
-mask0: .word 0x7F800000,0x007FFFFF,0x800000,0x8000,0x7f
+#          ( 0         ,4         ,8       ,12    ,16  ,20        ,24)
+mask0: .word 0x7F800000,0x007FFFFF,0x800000,0x8000,0x7f,0x3F800000,0x80000000
 # mask1 for round
 mask1: .word 0x8000
 # mask2 for decoder
@@ -26,8 +27,10 @@ main:
     add a4,a6,x0
     
     jal ra,encoder        # jump to encoder funtion
-    add s9,a0,x0          # save a0(data after encode) to s9
+    add s9,s3,x0          # save s3(data after encode) to s9
     jal ra,decoder        # jump to decoder function
+    jal ra,Multi_bfloat
+    
     #
     li a7,2               # set a7 as float mode 
     add a0,x0,s5          # set a0 as s5 
@@ -35,7 +38,7 @@ main:
     
     jal ra,cl             # change line
     
-    i a7,2                # set a7 as float mode  
+    li a7,2                # set a7 as float mode  
     add a0,x0,s6          # set a0 as s6
     ecall                 # call
     
@@ -77,6 +80,7 @@ f32_b16_p1:
     lw t6,16(a3)          # load mask 0x7f
     and t2,t2,t6          # let t2 only have integer
     slli t2,t2,16         # shift right 16
+    j f32_b16_p2
     # if not overflow
 no_overflow:
     srli t2,t2,16         # shift t2 to left 1 integer and 7 fraction
@@ -105,7 +109,7 @@ encoder:
     add t1,a4,x0          # load a4(second bfloat) to t1
     srli t1,t1,16         # shift to let second bfloat fit in one register
     or t0,t0,t1           # combine two bfloat in one register
-    add a0,t0,x0          # load t0 to a0
+    add s3,t0,x0          # load t0 to s3
     ret                   # return to main
     
 decoder:
@@ -126,7 +130,69 @@ cl:
     la a0,str             # load str to a0
     ecall                 # call 
     ret                   # return to main
+    
 
+# Multiplication with bfloat in one register
+Multi_bfloat:
+    # decoder function input is a0
+    # jal ra,decoder        # load a0(two bloat number in one register) to t0
+    # decoder function output is s5,s6
+    add t0,s5,x0          # store s5(bfloat 2) to t0
+    add t1,s6,x0          # store s6(bfloat 1) to t1
+    lw t6,0(a3)           # load mask0 mask 0x7F800000
+    # get exponent to t2,t3
+    and t3,t0,t6          # use mask 0x7F800000 to get t0 exponent
+    and t2,t1,t6          # use mask 0x7F800000 to get t1 exponent
+    add t3,t3,t2          # add two exponent to t3
+    lw t6,20(a3)          # load mask0 mask 0x3F800000
+    sub t3,t3,t6          # sub 127 to exponent
+
+    # get sign
+    xor t2,t0,t1          # get sign and store on t2
+    srli t2,t2,31         # get rid of useless data
+    slli t2,t2,31         # let sign back to right position
+    
+    # get sign and exponent together
+    or t3,t3,t2
+    # set the sign and exponent to t0
+    slli t0,t0,9
+    srli t0,t0,9
+    or t0,t3,t0
+
+    # get fraction to t2 and t3
+    lw t6,4(a3)           # load mask0 mask 0x007FFFFF
+    and t2,t0,t6          # use mask 0x007FFFFF get fraction
+    and t3,t1,t6          # use mask 0x007FFFFF get fraction
+    slli t2,t2,8          # shift left let no leading 0
+    lw t6,24(a3)          # load mask0 mask 0x80000000
+    or t2,t2,t6           # use mask 0x80000000 to add integer
+    srli t2,t2,1          # shift right to add space for overflow
+
+    slli t3,t3,8          # shift left let no leading 0
+    or t3,t3,t6           # use mask 0x80000000 to add integer
+    srli t3,t3,1          # shift right to add space for overflow
+
+    add s11,x0,x0         # set a counter and 0
+    addi s10,x0,8         # set a end condition
+    add t1,x0,x0          # reset t1 to 0 and let this register be result
+    lw t6,24(a3)          # load mask0 mask 0x80000000
+loop:
+    addi s11,s11,1        # add 1 at counter every loop
+    srli t6,t6,1          # shift right at 1 every loop
+    
+    and t4,t2,t6          # use mask to specified number at that place
+    beq t4,x0,not_add     # jump if t4 equal to 0
+    add t1,t1,t3          # 
+not_add:
+    srli t3,t3,1
+    bne s11,s10,loop
+    
+    
+    
+    ret
+    
+    
+    
 exit:
     li a7,10
     ecall
