@@ -38,6 +38,7 @@ void decoder(int c ,int *n1,int *n2){
     *n2=(c&0x0000ffff)<<16;
 }
 
+// // The bfloat multiplication still not implement 
 // void bfloat_multiplication(int *num){
 //     printf("0x%x\n",*num);
 //     int mask[]={0x1,0xff,0x7f};
