@@ -1,7 +1,8 @@
 .data
 # test data 
-# test0: .word 0x4141f9a7,0x423645a2 
-test0: .word 0x3fa66666,0x42c63333
+test0: .word 0x4141f9a7,0x423645a2 
+test1: .word 0x3fa66666,0x42c63333
+test2: .word 0x43e43a5e,0x42b1999a
 # mask
 # mask0  for exponent  ,fraction
 #          ( 0         ,4         ,8       ,12    ,16  ,20        ,24        )
