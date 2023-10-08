@@ -38,52 +38,52 @@ void decoder(int c ,int *n1,int *n2){
     *n2=(c&0x0000ffff)<<16;
 }
 
-void bfloat_multiplication(int *num){
-    printf("0x%x\n",*num);
-    int mask[]={0x1,0xff,0x7f};
-    int fra=0,exp=0,sig=0;
-    int bn1=0,bn2=0;
-    // fraction
-    bn2 = *num & mask[2];
-    bn2 |= 0x100;
-    mask[2] <<=16;
-    bn1 = *num & mask[2];
-    bn1 >>= 16;
-    bn1 |= 0x100;
-    for(int i=0;i<8;i++){
-        if((bn1 && 1)){
-            fra+=bn2;
-        }
-        bn1>>1;
-        bn2<<1;
-    }
-    // if((fra & 0x8000)>>16)
-    //     fra >>= 9;
-    // else 
-    //     fra >>=8;
-    printf("%x\n",fra);
-    // exponent
-    mask[1] <<= 7;
-    bn2 = *num & mask[1];
-    mask[1] <<= 16;
-    bn1 = *num & mask[1];
-    bn1 >>= 23;
-    bn2 >>= 7;
-    exp=bn1+bn2-127;
-    printf("%x\n",exp);
+// void bfloat_multiplication(int *num){
+//     printf("0x%x\n",*num);
+//     int mask[]={0x1,0xff,0x7f};
+//     int fra=0,exp=0,sig=0;
+//     int bn1=0,bn2=0;
+//     // fraction
+//     bn2 = *num & mask[2];
+//     bn2 |= 0x100;
+//     mask[2] <<=16;
+//     bn1 = *num & mask[2];
+//     bn1 >>= 16;
+//     bn1 |= 0x100;
+//     for(int i=0;i<8;i++){
+//         if((bn1 && 1)){
+//             fra+=bn2;
+//         }
+//         bn1>>1;
+//         bn2<<1;
+//     }
+//     // if((fra & 0x8000)>>16)
+//     //     fra >>= 9;
+//     // else 
+//     //     fra >>=8;
+//     printf("%x\n",fra);
+//     // exponent
+//     mask[1] <<= 7;
+//     bn2 = *num & mask[1];
+//     mask[1] <<= 16;
+//     bn1 = *num & mask[1];
+//     bn1 >>= 23;
+//     bn2 >>= 7;
+//     exp=bn1+bn2-127;
+//     printf("%x\n",exp);
 
-    // sign
-    bn1 = 0;
-    bn2 = 0;
-    mask[0] <<= 15;
-    bn2= *num & mask[0];
-    bn2 <<= 16;
-    mask[0] <<= 16;
-    bn1 = *num & mask[0];
-    bn1 ^= bn2;
-    sig=bn1;
-    *num = sig | (fra << 15) | (exp << 22);
-}
+//     // sign
+//     bn1 = 0;
+//     bn2 = 0;
+//     mask[0] <<= 15;
+//     bn2= *num & mask[0];
+//     bn2 <<= 16;
+//     mask[0] <<= 16;
+//     bn1 = *num & mask[0];
+//     bn1 ^= bn2;
+//     sig=bn1;
+//     *num = sig | (fra << 15) | (exp << 22);
+// }
 
 
 int main(){
