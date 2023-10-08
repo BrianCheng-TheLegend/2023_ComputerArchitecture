@@ -100,28 +100,17 @@ int main(){
     float add;
     int *p=(int *) &add;
     *p=0;
-    // // show num1 binary form and it's value
-    // printf("0x%x\n",*np1);
-    // printf("%f\n",num1);
-    // // show num2 binary form and it's value
-    // printf("0x%x\n",*np2);
-    // printf("%f\n",num2);
+    // show num1 binary form and it's value
+    printf("0x%x\n",*np1);
+    printf("%f\n",num1);
+    // show num2 binary form and it's value
+    printf("0x%x\n",*np2);
+    printf("%f\n",num2);
     // add two number together and print the binary form
     *p=encoder(np1,np2);
-
-    bfloat_multiplication(p);
-    // printf()
-    printf("0x%x\n",*p);
-    // // check if num1 and num2 are 0
-    // printf("0x%x\n",*np1);
-    // printf("0x%x\n",*np2);
-    // decode these two nuber to np1 and np2
-    // decoder(add,np1,np2);
-    // // check if num1 and num2 are expect number
-    // printf("0x%x\n",*np1);
-    // printf("%f\n",num1);
-    // printf("0x%x\n",*np2);
-    // printf("%f\n",num2);
-
+    decoder(*p,&num1,&num2);
+    float mul_num;
+    mul_num=num1*num2;
+    printf("%f\n",mul_num);
     return 0;
 }
