@@ -31,22 +31,24 @@ main:
     jal ra,decoder        # jump to decoder function
     jal ra,Multi_bfloat
     
-    #
-    li a7,2               # set a7 as float mode 
-    add a0,x0,s5          # set a0 as s5 
-    ecall                 # call
+    # Output second bfloat after decoder
+    # li a7,2               # set a7 as float mode 
+    # add a0,x0,s5          # set a0 as s5 
+    # ecall                 # call
     
     jal ra,cl             # change line
     
-    li a7,2               # set a7 as float mode  
-    add a0,x0,s6          # set a0 as s6
-    ecall                 # call
+    # Output first bfloat after decoder
+    # li a7,2               # set a7 as float mode  
+    # add a0,x0,s6          # set a0 as s6
+    # ecall                 # call
     
     jal ra,cl             # change line
     
-    li a7,2               
-    add a0,x0,s3       
-    ecall                 # call
+    # Output Multiplication result
+    # li a7,2               
+    # add a0,x0,s3       
+    # ecall                 
     
     j exit
 
@@ -196,14 +198,12 @@ not_add:
     srli t3,t3,1
     bne s11,s10,loop
 # end of loop 
-############
-li a7,1
-add a0,t3,x0
-ecall
-############   
+
+  
     # check if overflow
     lw t6,24(a3)
     and t4,t1,t6
+   
     beq t4,x0,not_overflow
     
     # if overflow
@@ -213,7 +213,7 @@ ecall
     lw t6,8(a3)
     add t0,t0,t6
     j Mult_end
-    
+     
     # if not overflow
 not_overflow:
     slli t1,t1,2
@@ -221,7 +221,14 @@ not_overflow:
     slli t1,t1,16
 
 Mult_end:
+    srli t0,t0,23
+    slli t0,t0,23
     or t0,t0,t1
+############
+li a7,35
+add a0,t0,x0
+ecall
+############ 
     add s3,t0,x0
     ret
     
