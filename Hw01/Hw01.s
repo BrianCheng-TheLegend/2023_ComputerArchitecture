@@ -24,34 +24,34 @@ main:
     add a5,a6,x0          # store first bfloat in a5
     
     lw a6,4(a2)           # load test data to a6
-    jal ra,f32_b16_p1
-    add a4,a6,x0
+    jal ra,f32_b16_p1     # jump to float32 transform to bfloat function 
+    add a4,a6,x0          # store the result to a4
     
     jal ra,encoder        # jump to encoder funtion
     add s9,s3,x0          # save s3(data after encode) to s9
     jal ra,decoder        # jump to decoder function
-    jal ra,Multi_bfloat
+    jal ra,Multi_bfloat   # jump to bfloat Multiplication funcition
     
     # Output second bfloat after decoder
     li a7,2               # set a7 as float mode 
     add a0,x0,s5          # set a0 as s5 
-    ecall                 # call
+    ecall                 # ecall
     
     jal ra,cl             # change line
     
     # Output first bfloat after decoder
     li a7,2               # set a7 as float mode  
     add a0,x0,s6          # set a0 as s6
-    ecall                 # call
+    ecall                 # ecall
     
     jal ra,cl             # change line
     
     # Output Multiplication result
-    li a7,2               
-    add a0,x0,s3       
-    ecall                 
+    li a7,2               # set a7 as float mode                
+    add a0,x0,s3          # set a0 as s3(Multiplication results)      
+    ecall                 # ecall
     
-    j exit
+    j exit                # jump to exit this program
 
 ### function converts IEEE754 fp32 to bfloat16
 f32_b16_p1:
@@ -109,7 +109,7 @@ f32_b16_p2:
 inf_or_zero:  
     srli a6,a6,16        
     slli a6,a6,16
-    ret                   # move back to main function
+    ret                   # return to main
 ### end of funtion  
     
 # encode two bfloat to one register
@@ -137,7 +137,7 @@ decoder:
 cl:
     li a7,4               # set a7 as string mode 
     la a0,str             # load str to a0
-    ecall                 # call 
+    ecall                 # ecall 
     ret                   # return to main
     
 
@@ -194,48 +194,47 @@ loop:
     
     and t4,t2,t6          # use mask to specified number at that place
     beq t4,x0,not_add     # jump if t4 equal to 0
-    add t1,t1,t3          
+    add t1,t1,t3          # add t3 to t1
 not_add:
-    srli t3,t3,1
-    bne s11,s10,loop
+    srli t3,t3,1          # shift left 1 bit to t3
+    bne s11,s10,loop      # if the condition not satisfy return to loop
 # end of loop 
-
-        
   
     # check if overflow
-    lw t6,24(a3)
-    and t4,t1,t6
-    lw t6,24(a3)
-    srli t6,t6,9
+    lw t6,24(a3)          # load mask0 mask 0x80000000 to t6
+    and t4,t1,t6          # get t1 max bit
     
+    # if t4 max bit equal to 0 will not overflow
     beq t4,x0,not_overflow
+    
     # if overflow
-    slli t1,t1,1
-    lw t6,8(a3)
-    add t0,t0,t6
-    j Mult_end
+    slli t1,t1,1          # shift left 1 bits to remove integer
+    lw t6,8(a3)           # load mask0 mask 0x800000
+    add t0,t0,t6          # exponent add 1 if overflow
+    j Mult_end            # jump to Mult_end
      
     # if not overflow
 not_overflow:
-    slli t1,t1,2
+    slli t1,t1,2          # shift left 2 bits to remove integer
 Mult_end:
-    srli t1,t1,24
-    addi t1,t1,1
-    slli t1,t1,15
+    srli t1,t1,24         # shift right to remove useless bits
+    addi t1,t1,1          # add 1 little bit to check if carry
+    srli t1,t1,1          # shift right to remove useless bits
+    slli t1,t1,16         # shift left to let fraction be right position
     
-    srli t0,t0,23
-    slli t0,t0,23
-    or t0,t0,t1
+    srli t0,t0,23         # shift right to remove useless bits
+    slli t0,t0,23         # shift left to let sign and exponent be right position
+    or t0,t0,t1           # combine t0 and t1 together to get bfloat
 
-    add s3,t0,x0
-    ret
+    add s3,t0,x0          # store bfloat after multiplication to  s3
+    ret                   # return to main
     
 exit:
-    li a7,10
-    ecall
+    li a7,10              # set a7 as exit
+    ecall                 # ecall
     
-############ Check
-# li a7,35
-# add a0,t0,x0
-# ecall
+############ Check every bits
+# li a7,35                # set a7 as binary mode
+# add a0,t0,x0            # store print data to a0
+# ecall                   # ecall
 ############ 
