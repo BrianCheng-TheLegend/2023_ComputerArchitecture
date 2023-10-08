@@ -1,7 +1,7 @@
 .data
 # test data 
-test0: .word 0x4141f9a7,0x423645a2 
-
+# test0: .word 0x4141f9a7,0x423645a2 
+test0: .word 0x3fa66666,0x42c63333
 # mask
 # mask0  for exponent  ,fraction
 #          ( 0         ,4         ,8       ,12    ,16  ,20        ,24        )
@@ -32,23 +32,23 @@ main:
     jal ra,Multi_bfloat
     
     # Output second bfloat after decoder
-    # li a7,2               # set a7 as float mode 
-    # add a0,x0,s5          # set a0 as s5 
-    # ecall                 # call
+    li a7,2               # set a7 as float mode 
+    add a0,x0,s5          # set a0 as s5 
+    ecall                 # call
     
     jal ra,cl             # change line
     
     # Output first bfloat after decoder
-    # li a7,2               # set a7 as float mode  
-    # add a0,x0,s6          # set a0 as s6
-    # ecall                 # call
+    li a7,2               # set a7 as float mode  
+    add a0,x0,s6          # set a0 as s6
+    ecall                 # call
     
     jal ra,cl             # change line
     
     # Output Multiplication result
-    # li a7,2               
-    # add a0,x0,s3       
-    # ecall                 
+    li a7,2               
+    add a0,x0,s3       
+    ecall                 
     
     j exit
 
@@ -199,17 +199,17 @@ not_add:
     bne s11,s10,loop
 # end of loop 
 
+        
   
     # check if overflow
     lw t6,24(a3)
     and t4,t1,t6
-   
-    beq t4,x0,not_overflow
+    lw t6,24(a3)
+    srli t6,t6,9
     
+    beq t4,x0,not_overflow
     # if overflow
     slli t1,t1,1
-    srli t1,t1,25
-    slli t1,t1,16
     lw t6,8(a3)
     add t0,t0,t6
     j Mult_end
@@ -217,21 +217,24 @@ not_add:
     # if not overflow
 not_overflow:
     slli t1,t1,2
-    srli t1,t1,25
-    slli t1,t1,16
-
 Mult_end:
+    srli t1,t1,24
+    addi t1,t1,1
+    slli t1,t1,15
+    
     srli t0,t0,23
     slli t0,t0,23
     or t0,t0,t1
-############
-li a7,35
-add a0,t0,x0
-ecall
-############ 
+
     add s3,t0,x0
     ret
     
 exit:
     li a7,10
     ecall
+    
+############ Check
+# li a7,35
+# add a0,t0,x0
+# ecall
+############ 
