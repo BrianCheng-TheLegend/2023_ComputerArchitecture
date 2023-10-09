@@ -14,11 +14,14 @@ mask2: .word 0xFFFF0000,0x0000FFFF
 
 #string
 str: .string "\n"
+str0: .string "bfloat16 1 : "
+str1: .string "bfloat16 2 : "
+str2: .string "Multiplication results : "
 
 .text
 main:
     li a7,1     
-    la a2,test0           # load test data address to a2
+    la a2,test2           # load test data address to a2
     lw a6,0(a2)           # load test data to a6
     jal ra,f32_b16_p1     # call fp32 to bf16 function 
     add a5,a6,x0          # store first bfloat in a5
@@ -32,12 +35,9 @@ main:
     jal ra,decoder        # jump to decoder function
     jal ra,Multi_bfloat   # jump to bfloat Multiplication funcition
     
-    # Output second bfloat after decoder
-    li a7,2               # set a7 as float mode 
-    add a0,x0,s5          # set a0 as s5 
-    ecall                 # ecall
-    
-    jal ra,cl             # change line
+    li a7,4
+    la a0,str0 
+    ecall
     
     # Output first bfloat after decoder
     li a7,2               # set a7 as float mode  
@@ -45,6 +45,23 @@ main:
     ecall                 # ecall
     
     jal ra,cl             # change line
+    
+    li a7,4
+    la a0,str1
+    ecall
+    
+    # Output second bfloat after decoder
+    li a7,2               # set a7 as float mode 
+    add a0,x0,s5          # set a0 as s5 
+    ecall                 # ecall
+    
+    jal ra,cl             # change line
+    
+    
+    li a7,4
+    la a0,str2
+    ecall
+
     
     # Output Multiplication result
     li a7,2               # set a7 as float mode                
@@ -112,7 +129,7 @@ inf_or_zero:
     ret                   # return to main
 ### end of funtion  
     
-### encode two bfloat to one register
+# encode two bfloat to one register
 encoder:
     add t0,a5,x0          # load a5(first bfloat) to t0
     add t1,a4,x0          # load a4(second bfloat) to t1
@@ -121,7 +138,6 @@ encoder:
     add s3,t0,x0          # load t0 to s3
     ret                   # return to main
     
-### decode two bfloat on one register to two registers
 decoder:
     add t0,s9,x0          # load s9(data encode) to t0
     la a1,mask2           # load mask2 address
@@ -134,7 +150,7 @@ decoder:
     add s5,t2,x0          # store t2(bfloat 2) to s5
     ret                   # return to main
     
-### change line
+# change line
 cl:
     li a7,4               # set a7 as string mode 
     la a0,str             # load str to a0
@@ -142,7 +158,7 @@ cl:
     ret                   # return to main
     
 
-### Multiplication with bfloat in one register
+# Multiplication with bfloat in one register
 Multi_bfloat:
     # decoder function input is a0
     # jal ra,decoder        # load a0(two bloat number in one register) to t0
@@ -229,8 +245,7 @@ Mult_end:
 
     add s3,t0,x0          # store bfloat after multiplication to  s3
     ret                   # return to main
-### end of function    
-
+    
 exit:
     li a7,10              # set a7 as exit
     ecall                 # ecall
