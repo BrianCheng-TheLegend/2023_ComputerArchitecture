@@ -165,9 +165,9 @@ Multi_bfloat:
     # get sign and exponent together
     or t3,t3,t2
     # set the sign and exponent to t0
-    slli t0,t0,9
-    srli t0,t0,9
-    or t0,t3,t0
+    slli t0,t0,9          # shift left to clear 9 bits 
+    srli t0,t0,9          # shift right to make space for sign and exp
+    or t0,t3,t0           # merge sign and exp to t0
 
     # get fraction to t2 and t3
     lw t6,16(a3)          # load mask0 mask 0x7F
