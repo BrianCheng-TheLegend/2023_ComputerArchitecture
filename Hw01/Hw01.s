@@ -1,243 +1,220 @@
 .data
-# test data 
-test0: .word 0x4141f9a7,0x423645a2 
-test1: .word 0x3fa66666,0x42c63333
-test2: .word 0x43e43a5e,0x42b1999a
-test3: .word 0x3f8fbe77,0x3f8fbe77
-# mask
-# mask0  for exponent  ,fraction
-#          ( 0         ,4         ,8       ,12    ,16  ,20        ,24        )
-mask0: .word 0x7F800000,0x007FFFFF,0x800000,0x8000,0x7f,0x3F800000,0x80000000
-# mask1 for round
-mask1: .word 0x8000
-# mask2 for decoder
-mask2: .word 0xFFFF0000,0x0000FFFF
-z
+    # will not overflow, and will predict as false
+    cmp_data_1: .dword 0x0000000000000000, 0x0000000000000000
+    # will not overflow, and will predict as false
+    cmp_data_2: .dword 0x0000000000000001, 0x0000000000000010
+    # will not overflow, but will predict as true
+    cmp_data_3: .dword 0x0000000000000002, 0x4000000000000000
+    # will overflow, and will predict as true
+    cmp_data_4: .dword 0x0000000000000003, 0x7FFFFFFFFFFFFFFF
+    
 #string
-str: .string "\n"
+    str: .string "\n"
+    
 
 .text
+# assume little endian
 main:
-    li a7,1     
-    la a2,test3           # load test data address to a2
-    lw a6,0(a2)           # load test data to a6
-    jal ra,f32_b16_p1     # call fp32 to bf16 function 
-    add a5,a6,x0          # store first bfloat in a5
+    addi sp, sp, -16
+    # push four pointers of 4 gourps test data onto the stack
+    la t0, cmp_data_1
+    sw t0, 0(sp)
+    la t0, cmp_data_2
+    sw t0, 4(sp)
+    la t0, cmp_data_3
+    sw t0, 8(sp)
+    la t0, cmp_data_4
+    sw t0, 12(sp)
     
-    lw a6,4(a2)           # load test data to a6
-    jal ra,f32_b16_p1     # jump to float32 transform to bfloat function 
-    add a4,a6,x0          # store the result to a4
     
-    jal ra,encoder        # jump to encoder funtion
-    add s9,s3,x0          # save s3(data after encode) to s9
-    jal ra,decoder        # jump to decoder function
-    jal ra,Multi_bfloat   # jump to bfloat Multiplication funcition
-    
-    # Output second bfloat after decoder
-    li a7,2               # set a7 as float mode 
-    add a0,x0,s5          # set a0 as s5 
-    ecall                 # ecall
-    
-    jal ra,cl             # change line
-    
-    # Output first bfloat after decoder
-    li a7,2               # set a7 as float mode  
-    add a0,x0,s6          # set a0 as s6
-    ecall                 # ecall
-    
-    jal ra,cl             # change line
-    
-    # Output Multiplication result
-    li a7,2               # set a7 as float mode                
-    add a0,x0,s3          # set a0 as s3(Multiplication results)      
-    ecall                 # ecall
-    
-    j exit                # jump to exit this program
+    addi s0, zero, 4    # s0 is the goal iteration count,4 represent 4 gourps of data
+    addi s1, zero, 0    # s1 is the counter
+    addi s2, sp, 0      # s2 now points to cmp_data_1
+main_loop:
+    lw a0, 0(s2)        # a0 stores the pointer to first data in cmp_data_x
+    addi a1, a0, 8      # a1 stores the pointer to second data in cmp_data_x
+    jal ra, pimo        # jump into pimo funtion,with address in a0,a1
 
-### function converts IEEE754 fp32 to bfloat16
-f32_b16_p1:
-    sw a6,0(sp)
-    add t0,a6,x0          # a6 will be only for this funtion to access
-    la a3,mask0           # load mask0 address to a3
+    addi s2, s2, 4      # s2 points to next cmp_data_x
+    addi s1, s1, 1      # counter++
+    bne s1, s0, main_loop
     
-    # exponent
-    lw t6,0(a3)           # load mask 0x7F800000 to t6
-    and t1,t0,t6          # let exponent save to t1
+    addi sp, sp, 16
+    j exit
     
-    # fraction
-    lw t6,4(a3)           # load 0x007FFFFF to t6
-    and t2,t0,t6          # let fraction save to t2
     
-    # check this number if 0 or inf (exponent + fraction)
-    lw t6,0(a3)           # load mask 0x7F800000 to t6
-    beq t1,t6,inf_or_zero # exp == 0x7F800000
-    or t3,t1,t2 
-    beq t3,x0,inf_or_zero # exp == 0 && man == 0 
+# predict if multiplication overflow:
+pimo:
+    # Prologue
+    addi sp, sp, -20
+    sw ra, 0(sp)
+    sw s0, 4(sp)
+    sw s1, 8(sp)
+    sw s2, 12(sp)
+    sw s3, 16(sp)
+    # End of Prologue
     
-    # add integer to fraction
-    lw t6,8(a3)           # load integer
-    or t2,t2,t6           # add integer
+    mv s0, a0       # s0 is address of x0
+    mv s1, a1       # s1 is address of x1
     
-    # round to nearest for fraction
-    lw t6,12(a3)          # load the round number
-    add t2,t2,t6          # add round number
-    srli t5,t2,24         # shift left 24 to t5 
-    beq t5,x0,no_overflow # if t5 equal to 0 move to no_overflow
-    # if overflow
-    lw t6,8(a3)           # load mask 0x007FFFFF
-    add t1,t1,t6          # add 1 to exponent
-    srli t2,t2,17         # shift t2 to left 1 integer and 7 fraction
-    lw t6,16(a3)          # load mask 0x7f
-    and t2,t2,t6          # let t2 only have integer
-    slli t2,t2,16         # shift right 16
-    j f32_b16_p2
-    # if not overflow
-no_overflow:
-    srli t2,t2,16         # shift t2 to left 1 integer and 7 fraction
-    lw t6,16(a3)          # load mask 0x7f
-    and t2,t2,t6          # let t2 only have integer
-    slli t2,t2,16         # shift right 16
-    #f32_b16 end function
-f32_b16_p2:
-    # save to a6
-    srli t0,t0,31         # shift left to let t0 remain sign
-    slli t0,t0,31         # shift right to let t0 sign to the right position
-    or t0,t0,t1           # combine sign and exponent together
-    or t0,t0,t2           # combine sign,exponent and fraction together
-    add a6,t0,x0          # save t0 to a6
-    ret                   # move back to main function
+    lw a0, 0(s0)
+    lw a1, 4(s0)    # a0 a1 is now the value of x0
+    jal ra, clz
+    li s2, 64
+    sub s2, s2, a0  # s2 is now exp_x0+1
     
-inf_or_zero:  
-    srli a6,a6,16        
-    slli a6,a6,16
-    ret                   # return to main
-### end of funtion  
-    
-### encode two bfloat to one register
-encoder:
-    add t0,a5,x0          # load a5(first bfloat) to t0
-    add t1,a4,x0          # load a4(second bfloat) to t1
-    srli t1,t1,16         # shift to let second bfloat fit in one register
-    or t0,t0,t1           # combine two bfloat in one register
-    add s3,t0,x0          # load t0 to s3
-    ret                   # return to main
-    
-### decode two bfloat on one register to two registers
-decoder:
-    add t0,s9,x0          # load s9(data encode) to t0
-    la a1,mask2           # load mask2 address
-    lw s2,0(a1)           # load mask 0xFFFF0000
-    and t1,t0,s2          # use mask to specification bfloat 1
-    lw s2,4(a1)           # load mask 0x0000FFFF
-    and t2,t0,s2          # use mask to specification bfloat 2
-    slli t2,t2,16         # shift to left to let bfloat peform like original float
-    add s6,t1,x0          # store t1(bfloat 1) to s6
-    add s5,t2,x0          # store t2(bfloat 2) to s5
-    ret                   # return to main
-    
-### change line
-cl:
-    li a7,4               # set a7 as string mode 
-    la a0,str             # load str to a0
-    ecall                 # ecall 
-    ret                   # return to main
-    
+    lw a0, 0(s1)
+    lw a1, 4(s1)    # a1 a0 is now the value of x1
+    jal ra, clz
+    li s3, 64
+    sub s3, s3, a0  # s3 is now exp_x1+1
+ 
+    add s2, s2, s3  # s2 is (exp_x0 + 1) + (exp_x1 + 1)
+    li t0, 64
+    li a0, 1
+    bge s2, t0, pimo_end
+    li a0, 0        # return false
+pimo_end:
+    # Epilogue
+    lw ra, 0(sp)
+    lw s0, 4(sp)
+    lw s1, 8(sp)
+    lw s2, 12(sp)
+    lw s3, 16(sp)
+    addi sp, sp, 20
+    # End of Epilogue
+    ret
 
-### Multiplication with bfloat in one register
-Multi_bfloat:
-    # decoder function input is a0
-    # jal ra,decoder        # load a0(two bloat number in one register) to t0
-    # decoder function output is s5,s6
-    add t0,s5,x0          # store s5(bfloat 2) to t0
-    add t1,s6,x0          # store s6(bfloat 1) to t1
-    lw t6,0(a3)           # load mask0 mask 0x7F800000
-    # get exponent to t2,t3
-    and t3,t0,t6          # use mask 0x7F800000 to get t0 exponent
-    and t2,t1,t6          # use mask 0x7F800000 to get t1 exponent
-    add t3,t3,t2          # add two exponent to t3
-    lw t6,20(a3)          # load mask0 mask 0x3F800000
-    sub t3,t3,t6          # sub 127 to exponent
 
-    # get sign
-    xor t2,t0,t1          # get sign and store on t2
-    srli t2,t2,31         # get rid of useless data
-    slli t2,t2,31         # let sign back to right position
+# count leading zeros
+clz:
+    # Prologue
+    addi sp, sp, -4
+    sw ra, 0(sp)
+    # End of Prologue
     
-    # get sign and exponent together
-    or t3,t3,t2
-    # set the sign and exponent to t0
-    slli t0,t0,9          # shift left to clear 9 bits 
-    srli t0,t0,9          # shift right to make space for sign and exp
-    or t0,t3,t0           # merge sign and exp to t0
-
-    # get fraction to t2 and t3
-    lw t6,16(a3)          # load mask0 mask 0x7F
-    slli t6,t6,16         # shift mask to 0x7F0000
-    and t2,t0,t6          # use mask 0x7F0000 get fraction
-    and t3,t1,t6          # use mask 0x7F0000 get fraction
-    slli t2,t2,9          # shift left let no leading 0
-    srli t2,t2,1          # shift right let leading has one 0
-    lw t6,24(a3)          # load mask0 mask 0x80000000
-    or t2,t2,t6           # use mask 0x80000000 to add integer
-    srli t2,t2,1          # shift right to add space for overflow
-
-    slli t3,t3,8          # shift left let no leading 0
-    or t3,t3,t6           # use mask 0x80000000 to add integer
-    srli t3,t3,1          # shift right to add space for overflow
-
-    add s11,x0,x0         # set a counter and 0
-    addi s10,x0,8         # set a end condition
-    add t1,x0,x0          # reset t1 to 0 and let this register be result
-    lw t6,24(a3)          # load mask0 mask 0x80000000
-
-loop:
-    addi s11,s11,1        # add 1 at counter every loop
-    srli t6,t6,1          # shift right at 1 every loop
+    # a0 a1 = x
+    bne a1, zero, clz_fill_ones_upper
+clz_fill_ones_lower:
+    srli t0, a0, 1
+    or a0, a0, t0
+    srli t0, a0, 2
+    or a0, a0, t0
+    srli t0, a0, 4
+    or a0, a0, t0
+    srli t0, a0, 8
+    or a0, a0, t0
+    srli t0, a0, 16
+    or a0, a0, t0
+    j clz_fill_ones_end
+clz_fill_ones_upper:
+    srli t1, a1, 1
+    or a1, a1, t1
+    srli t1, a1, 2
+    or a1, a1, t1
+    srli t1, a1, 4
+    or a1, a1, t1
+    srli t1, a1, 8
+    or a1, a1, t1
+    srli t1, a1, 16
+    or a1, a1, t1
+    li a0, 0xffffffff
+clz_fill_ones_end:
     
-    and t4,t2,t6          # use mask to specified number at that place
-    beq t4,x0,not_add     # jump if t4 equal to 0
-    add t1,t1,t3          # add t3 to t1
-not_add:
-    srli t3,t3,1          # shift left 1 bit to t3
-    bne s11,s10,loop      # if the condition not satisfy return to loop
-# end of loop 
-  
-    # check if overflow
-    lw t6,24(a3)          # load mask0 mask 0x80000000 to t6
-    and t4,t1,t6          # get t1 max bit
     
-    # if t4 max bit equal to 0 will not overflow
-    beq t4,x0,not_overflow
+    # x -= ((x >> 1) & 0x5555555555555555);
+    srli t0, a0, 1
+    slli t1, a1, 31
+    or t0, t0, t1
+    srli t1, a1, 1      # t0 t1 = x >> 1
     
-    # if overflow
-    slli t1,t1,1          # shift left 1 bits to remove integer
-    lw t6,8(a3)           # load mask0 mask 0x800000
-    add t0,t0,t6          # exponent add 1 if overflow
-    j Mult_end            # jump to Mult_end
-     
-    # if not overflow
-not_overflow:
-    slli t1,t1,2          # shift left 2 bits to remove integer
-Mult_end:
-    srli t1,t1,24         # shift right to remove useless bits
-    addi t1,t1,1          # add 1 little bit to check if carry
-    srli t1,t1,1          # shift right to remove useless bits
-    slli t1,t1,16         # shift left to let fraction be right position
+    li t2, 0x55555555   # t2 is the mask
+    and t0, t0, t2
+    and t1, t1, t2      # t0 t1 = (x >> 1) & 0x5555555555555555
+ 
+    sltu t3, a0, t0     # t3 is the borrow bit
+    sub a0, a0, t0
+    sub a1, a1, t1
+    sub a1, a1, t3      # a0 a1 = x - (t0 t1)
     
-    srli t0,t0,23         # shift right to remove useless bits
-    slli t0,t0,23         # shift left to let sign and exponent be right position
-    or t0,t0,t1           # combine t0 and t1 together to get bfloat
-
-    add s3,t0,x0          # store bfloat after multiplication to  s3
-    ret                   # return to main
-### end of function    
+    
+    # x = ((x >> 2) & 0x3333333333333333) + (x & 0x3333333333333333);
+    srli t0, a0, 2
+    slli t1, a1, 30
+    or t0, t0, t1
+    srli t1, a1, 2      # t0 t1 = x >> 2
+    
+    li t2, 0x33333333   # t2 is the mask
+    and t0, t0, t2
+    and t1, t1, t2      # t0 t1 = (x >> 2) & 0x3333333333333333
+    and t4, a0, t2
+    and t5, a1, t2      # t4 t5 = x & 0x3333333333333333
+    
+    add a0, t0, t4
+    sltu t3, a0, t0     # t3 is the carry bit
+    add a1, t1, t5
+    add a1, a1, t3      # a0 a1 = (t0 t1) + (t4 t5)
+    
+    
+    # x = ((x >> 4) + x) & 0x0f0f0f0f0f0f0f0f;
+    srli t0, a0, 4
+    slli t1, a1, 28
+    or t0, t0, t1
+    srli t1, a1, 4      # t0 t1 = x >> 4
+    
+    add t0, t0, a0
+    sltu t3, t0, a0     # t3 is the carry bit
+    add t1, t1, a1
+    add t1, t1, t3      # t0 t1 = (x >> 4) + x
+    
+    li t2, 0x0f0f0f0f   # t2 is the mask
+    and a0, t0, t2
+    and a1, t1, t2      # a0 a1 = (t0 t1) & 0x0f0f0f0f0f0f0f0f
+    
+    
+    # x += (x >> 8);
+    srli t0, a0, 8
+    slli t1, a1, 24
+    or t0, t0, t1
+    srli t1, a1, 8      # t0 t1 = x >> 8
+    
+    add a0, a0, t0
+    sltu t3, a0, t0     # t3 is the carry bit
+    add a1, a1, t1
+    add a1, a1, t3      # a0 a1 = x + (x >> 8)
+    
+    
+    # x += (x >> 16);
+    srli t0, a0, 16
+    slli t1, a1, 16
+    or t0, t0, t1
+    srli t1, a1, 16     # t0 t1 = x >> 16
+    
+    add a0, a0, t0
+    sltu t3, a0, t0     # t3 is the carry bit
+    add a1, a1, t1
+    add a1, a1, t3      # a0 a1 = x + (x >> 16)
+    
+    
+    # x += (x >> 32);
+    mv t0, a1
+    mv t1, zero         # t0 t1 = x >> 32
+    
+    add a0, a0, t0
+    sltu t3, a0, t0     # t3 is the carry bit
+    add a1, a1, t1
+    add a1, a1, t3      # a0 a1 = x + (x >> 32)
+    
+    # return (64 - (x & 0x7f));
+    andi a0, a0, 0x7f   # a0 = (x & 0x7f)
+    li t0, 64
+    sub a0, t0, a0      # a0 = (64 - (x & 0x7f))
+    
+    # Epilogue
+    lw ra, 0(sp)
+    addi sp, sp, 4
+    # End of Prologue
+    ret
 
 exit:
-    li a7,10              # set a7 as exit
-    ecall                 # ecall
-    
-############ Check every bits
-# li a7,35                # set a7 as binary mode
-# add a0,t0,x0            # store print data to a0
-# ecall                   # ecall
-############ 
+    nop
