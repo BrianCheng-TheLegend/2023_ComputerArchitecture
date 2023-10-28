@@ -3,6 +3,7 @@
 test0: .word 0x4141f9a7,0x423645a2 
 test1: .word 0x3fa66666,0x42c63333
 test2: .word 0x43e43a5e,0x42b1999a
+test3: .word 0x3f8fbe77,0x3f8fbe77
 # mask
 # mask0  for exponent  ,fraction
 #          ( 0         ,4         ,8       ,12    ,16  ,20        ,24        )
@@ -11,14 +12,14 @@ mask0: .word 0x7F800000,0x007FFFFF,0x800000,0x8000,0x7f,0x3F800000,0x80000000
 mask1: .word 0x8000
 # mask2 for decoder
 mask2: .word 0xFFFF0000,0x0000FFFF
-
+z
 #string
 str: .string "\n"
 
 .text
 main:
     li a7,1     
-    la a2,test0           # load test data address to a2
+    la a2,test3           # load test data address to a2
     lw a6,0(a2)           # load test data to a6
     jal ra,f32_b16_p1     # call fp32 to bf16 function 
     add a5,a6,x0          # store first bfloat in a5
