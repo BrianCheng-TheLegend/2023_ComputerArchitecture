@@ -1,3 +1,9 @@
+.org 0
+.global _start
+
+/* newlib system calls */
+.set SYSEXIT, 93
+.set SYSWRITE, 64
 .data
     # will not overflow, and will predict as false
     cmp_data_1: .dword 0x0000000000000000, 0x0000000000000000
@@ -34,6 +40,17 @@ main_loop:
     lw a0, 0(s2)        # a0 stores the pointer to first data in cmp_data_x
     addi a1, a0, 8      # a1 stores the pointer to second data in cmp_data_x
     jal ra, pimo        # jump into pimo funtion,with address in a0,a1
+    
+
+    
+    ## print for rv32emu
+    add a1,a0,x0
+    li a7, SYSWRITE
+    li a0, 1
+    li a2, 4
+    ecall
+    ##
+    
 
     addi s2, s2, 4      # s2 points to next cmp_data_x
     addi s1, s1, 1      # counter++
@@ -75,15 +92,6 @@ pimo:
     bge s2, t0, pimo_end
     li a0, 0        # return false
 pimo_end:
-    
-    ## print for RIPES
-    li a7,1
-    ecall
-    li a7,4               # set a7 as string mode 
-    la a0,str             # load str to a0
-    ecall                 # ecall 
-    ##
-    
     # Epilogue
     lw ra, 0(sp)
     lw s0, 4(sp)
