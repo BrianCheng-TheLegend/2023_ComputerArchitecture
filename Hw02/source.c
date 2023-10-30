@@ -48,6 +48,10 @@ bool predict_if_mul_overflow(uint64_t *x0, uint64_t *x1)
 
 void main()
 {
+    predict_if_mul_overflow(&a_x0, &a_x1);
+    predict_if_mul_overflow(&b_x0, &b_x1);
+    predict_if_mul_overflow(&c_x0, &c_x1);
+    predict_if_mul_overflow(&d_x0, &d_x1);
     printf("%d\n", predict_if_mul_overflow(&a_x0, &a_x1));
     printf("%d\n", predict_if_mul_overflow(&b_x0, &b_x1));
     printf("%d\n", predict_if_mul_overflow(&c_x0, &c_x1));

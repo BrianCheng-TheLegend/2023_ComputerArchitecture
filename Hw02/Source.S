@@ -1,17 +1,32 @@
+.org 0
+.global _start
+
+/* newlib system calls */
+.set STDOUT,1
+.set SYSEXIT, 93
+.set SYSWRITE, 64
+
 .data
     # will not overflow, and will predict as false
-    cmp_data_1: .dword 0x0000000000000000, 0x0000000000000000
+cmp_data_1: .dword 0x0000000000000000, 0x0000000000000000
     # will not overflow, and will predict as false
-    cmp_data_2: .dword 0x0000000000000001, 0x0000000000000010
+cmp_data_2: .dword 0x0000000000000001, 0x0000000000000010
     # will not overflow, but will predict as true
-    cmp_data_3: .dword 0x0000000000000002, 0x4000000000000000
+cmp_data_3: .dword 0x0000000000000002, 0x4000000000000000
     # will overflow, and will predict as true
-    cmp_data_4: .dword 0x0000000000000003, 0x7FFFFFFFFFFFFFFF
-    
+cmp_data_4: .dword 0x0000000000000003, 0x7FFFFFFFFFFFFFFF
+
+nextline:    .ascii  "\n"
+             .set str_next_len, .-nextline
+
+blank:      .ascii  " "
+             .set str_blank_len, .-blank
+
+
 
 .text
 # assume little endian
-main:
+_start:
     addi sp, sp, -16
     
     # push four pointers of test data onto the stack
@@ -23,13 +38,6 @@ main:
     sw t0, 8(sp)
     la t0, cmp_data_4
     sw t0, 12(sp)
-    
-    # for testing
-    #li a0, 0
-    #li a1, 0x00
-    #jal ra clz
-    #jal ra print_dec
-    #j exit
  
     addi s0, zero, 4    # s0 is the goal iteration count
     addi s1, zero, 0    # s1 is the counter
@@ -38,12 +46,25 @@ main_loop:
     lw a0, 0(s2)        # a0 stores the pointer to first data in cmp_data_x
     addi a1, a0, 8      # a1 stores the pointer to second data in cmp_data_x
     jal ra, pimo
-    
-    li a7, 1            # tell ecall to print decimal
-    ecall               # print result of pimo (which is in a0)
-    li a0, 32           # 32 is " " in ASCII
-    li a7, 11           # tell ecall to print char
-    ecall               # print space
+
+    ### print for rv32emu
+    addi a1, a0, 48
+    addi sp, sp, -4
+    sw a1, 0(sp)
+    addi a1, sp, 0
+    li a7, SYSWRITE
+    li a0, STDOUT
+    li a2, 4
+    ecall
+    addi sp,sp,4  
+    ###
+
+    # printf("\n");
+    li  a7, SYSWRITE
+    li  a0, 1
+    la  a1, nextline
+    li  a2, 1
+    ecall
     
     addi s2, s2, 4      # s2 points to next cmp_data_x
     addi s1, s1, 1      # counter++
@@ -224,30 +245,7 @@ clz_fill_ones_end:
     addi sp, sp, 4
     ret
 
-# util func
-print_hex:
-    addi sp, sp, -4
-    sw ra, 0(sp)
-    li a7, 34
-    ecall       # print value
-    li a0, 32   # 32 is " " in ASCII
-    li a7, 11
-    ecall       # print space
-    lw ra, 0(sp)
-    addi sp, sp, 4
-    ret
-
-print_dec:
-    addi sp, sp, -4
-    sw ra, 0(sp)
-    li a7, 1
-    ecall       # print value
-    li a0, 32   # 32 is " " in ASCII
-    li a7, 11
-    ecall       # print space
-    lw ra, 0(sp)
-    addi sp, sp, 4
-    ret
-
 exit:
-    nop
+    li  a7, SYSEXIT	    
+    addi a0, x0, 0
+    ecall
